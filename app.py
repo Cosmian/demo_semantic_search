@@ -3,58 +3,78 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 
-st.set_page_config(page_title="🍲 Démo Recherche Sémantique", layout="centered")
-st.title("🔍 Recherche sémantique de recettes")
+# ----- Page setup -----
+st.set_page_config(page_title="🍲 Semantic Recipe Search", layout="centered")
 
-# ----- Base de recettes -----
+# ----- Header -----
+st.markdown(
+    """
+    <h1 style='text-align: center;'>🔍 <b>Semantic Recipe Search</b></h1>
+    <p style='text-align: center; color: gray;'>
+        Find recipes by meaning — not just keywords! <br>
+    </p>
+    <hr>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ----- Recipe database -----
 recipes = [
-    {"title": "Tarte Tatin",
-     "desc": """Ingrédients : 6 pommes, 100g de sucre, 50g de beurre, 1 pâte feuilletée. 
-Préparation : Préchauffez le four à 180°C. Dans une poêle allant au four, faites caraméliser le sucre avec le beurre. Ajoutez les pommes épluchées et coupées en quartiers. Disposez la pâte feuilletée par-dessus, en rentrant les bords. Enfournez 25-30 minutes. Retournez la tarte tiède avant de servir."""},
+    {"title": "Tarte Tatin ",
+     "desc": """**Ingredients:** 6 apples, 100g sugar, 50g butter, 1 puff pastry.  
+**Preparation:** Preheat oven to 180°C (350°F). In an oven-safe skillet, caramelize the sugar with the butter. 
+Add the peeled and quartered apples. Place the puff pastry on top, tucking in the edges. 
+Bake for 25–30 minutes. Invert the tart while still warm before serving."""},
 
-    {"title": "Tarte aux fraises",
-     "desc": """Ingrédients : 1 pâte sablée, 500g de fraises, 250ml de crème pâtissière. 
-Préparation : Préchauffez le four à 180°C. Étalez la pâte dans un moule et faites-la cuire à blanc 15 min. Laissez refroidir. Garnissez de crème pâtissière et disposez les fraises lavées et coupées. Servez frais."""},
+    {"title": "Strawberry Tart",
+     "desc": """**Ingredients:** 1 shortcrust pastry, 500g strawberries, 250ml pastry cream.  
+**Preparation:** Preheat oven to 180°C (350°F). Roll out the pastry and bake blind for 15 minutes. 
+Let cool. Fill with pastry cream and top with sliced strawberries. Serve chilled."""},
 
-    {"title": "Mousse au chocolat",
-     "desc": """Ingrédients : 200g de chocolat noir, 4 œufs, 50g de sucre, 1 pincée de sel. 
-Préparation : Faites fondre le chocolat au bain-marie. Séparez les blancs des jaunes. Fouettez les blancs en neige avec une pincée de sel. Mélangez les jaunes avec le chocolat fondu. Incorporez délicatement les blancs en neige. Réfrigérez au moins 3h avant de servir."""},
+    {"title": "Chocolate Mousse",
+     "desc": """**Ingredients:** 200g dark chocolate, 4 eggs, 50g sugar, 1 pinch of salt.  
+**Preparation:** Melt the chocolate in a bain-marie. Separate whites and yolks. 
+Beat the whites with salt until stiff peaks form. Mix yolks with melted chocolate, 
+then gently fold in the whites. Chill for at least 3 hours before serving."""},
 
-    {"title": "Crème brûlée",
-     "desc": """Ingrédients : 500ml de crème, 5 jaunes d'œufs, 100g de sucre, 1 gousse de vanille. 
-Préparation : Préchauffez le four à 150°C. Faites chauffer la crème avec la vanille. Fouettez les jaunes avec le sucre, puis ajoutez la crème chaude. Versez dans des ramequins et faites cuire au bain-marie 40-45 min. Laissez refroidir et caramélisez le dessus au chalumeau."""},
+    {"title": "Crème Brûlée",
+     "desc": """**Ingredients:** 500ml cream, 5 egg yolks, 100g sugar, 1 vanilla bean.  
+**Preparation:** Preheat oven to 150°C (300°F). Heat the cream with vanilla. 
+Whisk yolks with sugar, then add hot cream. Pour into ramekins and bake in a water bath for 40–45 minutes. 
+Cool and caramelize the top with a torch before serving."""},
 
     {"title": "Tiramisu",
-     "desc": """Ingrédients : 250g de mascarpone, 3 œufs, 80g de sucre, 200g de biscuits à la cuillère, café fort, cacao en poudre. 
-Préparation : Séparez les blancs des jaunes. Fouettez jaunes + sucre + mascarpone. Montez les blancs en neige et incorporez-les. Trempez les biscuits dans le café et disposez-les dans un plat. Étalez une couche de crème, puis une deuxième couche de biscuits et crème. Saupoudrez de cacao. Réfrigérez 4h avant de servir."""},
+     "desc": """**Ingredients:** 250g mascarpone, 3 eggs, 80g sugar, 200g ladyfingers, strong coffee, cocoa powder.  
+**Preparation:** Separate egg whites and yolks. Whisk yolks with sugar and mascarpone. 
+Beat whites until stiff and fold in. Dip ladyfingers in coffee, layer with cream, repeat, 
+and dust with cocoa. Chill for 4 hours before serving."""},
 ]
 
-# Query exemple
-
-
-
-# ----- Création des embeddings -----
+# ----- Create embeddings -----
 model = SentenceTransformer("all-MiniLM-L6-v2")
 texts = [r["title"] + " " + r["desc"] for r in recipes]
 embeddings = model.encode(texts, normalize_embeddings=True)
 
-# ----- Création de l'index FAISS -----
-d = embeddings.shape[1]  # dimension des embeddings
-index = faiss.IndexFlatIP(d)  # index pour similarité cosinus
+# ----- FAISS index -----
+d = embeddings.shape[1]
+index = faiss.IndexFlatIP(d)
 index.add(embeddings)
 
-# ----- Interface Streamlit -----
+# ----- User interface -----
+st.markdown("### 👩‍🍳 What would you like to cook today?")
+query = st.text_input("Type your idea here:", "apple tart")
 
-query = st.text_input("Que veux-tu cuisiner ?", "tarte aux pommes")
-
-if st.button("Rechercher"):
+if st.button("🔎 Search"):
     query_vec = model.encode([query], normalize_embeddings=True)
-    D, I = index.search(query_vec, k=5)  # top 3 résultats
+    D, I = index.search(query_vec, k=5)
 
-    st.success("Résultats les plus pertinents :")
+    st.markdown("---")
+    st.markdown("### 🍰 Most relevant recipes:")
     for idx, score in zip(I[0], D[0]):
         r = recipes[idx]
         st.subheader(r["title"])
         st.markdown(r["desc"])
-        st.markdown(f"*Score de similarité : {score:.3f}*")
+        st.caption(f"🔹 Similarity score: {score:.3f}")
         st.divider()
+
+
